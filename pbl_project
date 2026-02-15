@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaamSetu - Local Service Guild</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and Babel for running JSX in the browser -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #FFF9F2;
+        }
+        .font-serif {
+            font-family: 'Instrument Serif', serif;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Custom scrollbar for date selection */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        // --- Icons as Inline SVGs for Reliability ---
+        const RupeeIcon = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/>
+            </svg>
+        );
+
+        const UserIcon = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+        );
+
+        const MapPinIcon = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+        );
+
+        const ArrowLeftIcon = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+            </svg>
+        );
+
+        // --- Constants ---
+        const CATEGORIES = [
+            { name: "Plumbing", icon: "🚰" },
+            { name: "Electrician", icon: "⚡" },
+            { name: "Cleaning", icon: "🧹" },
+            { name: "Carpentry", icon: "🔨" },
+            { name: "Gardening", icon: "🌱" },
+            { name: "Moving", icon: "📦" }
+        ];
+
+        const TIME_SLOTS = [
+            { id: 'morning', label: 'Morning', range: '09:00 AM - 12:00 PM', icon: '🌅' },
+            { id: 'afternoon', label: 'Afternoon', range: '12:00 PM - 04:00 PM', icon: '☀️' },
+            { id: 'evening', label: 'Evening', range: '04:00 PM - 08:00 PM', icon: '🌇' }
+        ];
+
+        const WORKERS_LIST = [
+            { id: '1', name: "Raju Rastogi", skill: "Plumbing", rating: 4.8, rate: 350, distance: 0.8, pastWork: [{ title: "Apartment Leakage Fix", desc: "Expert pipe repair." }], reviews: [{ user: "Anil K.", comment: "Excellent work.", rating: 5 }] },
+            { id: '2', name: "Ramesh Verma", skill: "Electrician", rating: 4.9, rate: 400, distance: 1.5, pastWork: [{ title: "Inverter Setup", desc: "Safe setup." }], reviews: [{ user: "Deepak S.", comment: "Reliable.", rating: 5 }] },
+            { id: '3', name: "Ravindra Singh", skill: "Cleaning", rating: 4.7, rate: 250, distance: 2.1, pastWork: [{ title: "Deep House Clean", desc: "Thorough clean." }], reviews: [{ user: "Meena P.", comment: "Spotless.", rating: 4 }] },
+            { id: '4', name: "Suresh Kumar", skill: "Carpentry", rating: 4.6, rate: 450, distance: 1.1, pastWork: [{ title: "Cabinet Repair", desc: "Great wood work." }], reviews: [{ user: "Pankaj G.", comment: "Nice finish.", rating: 5 }] },
+            { id: '5', name: "Vikram Mehta", skill: "Gardening", rating: 4.5, rate: 300, distance: 3.2, pastWork: [{ title: "Garden Setup", desc: "Green balcony." }], reviews: [{ user: "Sonal V.", comment: "Healthy plants.", rating: 4 }] },
+            { id: '6', name: "Amit Sharma", skill: "Moving", rating: 4.9, rate: 800, distance: 2.8, pastWork: [{ title: "Relocation", desc: "Safe transit." }], reviews: [{ user: "Rahul M.", comment: "Professional.", rating: 5 }] }
+        ];
+
+        const App = () => {
+            const [view, setView] = useState('auth'); 
+            const [searchQuery, setSearchQuery] = useState("");
+            const [selectedWorker, setSelectedWorker] = useState(null);
+            const [selectedDate, setSelectedDate] = useState(0); 
+            const [selectedSlot, setSelectedSlot] = useState(null);
+            
+            const [regData, setRegData] = useState({ name: '', phone: '', role: 'user' });
+            const [otpInput, setOtpInput] = useState('');
+
+            const sortedWorkers = useMemo(() => {
+                return WORKERS_LIST.filter(w => 
+                    w.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    w.skill.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }, [searchQuery]);
+
+            const getNextDays = () => {
+                const days = [];
+                const options = { weekday: 'short', day: 'numeric', month: 'short' };
+                for (let i = 0; i < 5; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() + i);
+                    days.push({ display: date.toLocaleDateString('en-US', options), id: i });
+                }
+                return days;
+            };
+
+            const renderBackButton = (target = 'home') => (
+                <button onClick={() => setView(target)} className="flex items-center gap-2 text-orange-600 hover:text-orange-800 transition-all mb-4 group">
+                    <div className="p-1.5 rounded-lg bg-orange-600 text-white shadow-md group-hover:bg-orange-700 transition-all">
+                        <ArrowLeftIcon size={14} />
+                    </div>
+                    <span className="font-serif font-bold text-sm tracking-wide">Return</span>
+                </button>
+            );
+
+            // --- Authentication Views ---
+            if (view === 'auth') {
+                return (
+                    <div className="min-h-screen bg-[#FFF9F2] flex items-center justify-center p-6 animate-fade-in">
+                        <div className="max-w-sm w-full bg-white rounded-3xl shadow-xl p-7 border border-orange-100">
+                            <div className="text-center mb-6">
+                                <div className="bg-orange-600 p-2.5 rounded-xl inline-block text-white mb-3 shadow-md">
+                                    <RupeeIcon size={24} />
+                                </div>
+                                <h1 className="text-xl font-serif font-black tracking-widest text-orange-900 uppercase leading-none">KAAMSETU</h1>
+                                <p className="text-orange-400 text-[9px] font-black uppercase tracking-widest mt-1.5">Join the Community</p>
+                            </div>
+                            <form onSubmit={(e) => { e.preventDefault(); setView('otp'); }} className="space-y-5">
+                                <div className="flex bg-orange-50/50 p-1 rounded-xl border border-orange-100/50">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setRegData({...regData, role: 'user'})} 
+                                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${regData.role === 'user' ? 'bg-orange-600 text-white shadow-sm' : 'text-orange-400'}`}
+                                    >
+                                        User
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setRegData({...regData, role: 'worker'})} 
+                                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${regData.role === 'worker' ? 'bg-orange-600 text-white shadow-sm' : 'text-orange-400'}`}
+                                    >
+                                        Worker
+                                    </button>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[8px] font-black text-orange-400 uppercase tracking-widest ml-1 block">Full Name</label>
+                                    <input required type="text" placeholder="e.g. Ramesh Verma" className="w-full px-4 py-2.5 bg-orange-50 rounded-lg outline-none focus:ring-2 focus:ring-orange-200 text-sm font-medium border border-transparent" value={regData.name} onChange={(e) => setRegData({...regData, name: e.target.value})} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[8px] font-black text-orange-400 uppercase tracking-widest ml-1 block">Phone Number</label>
+                                    <div className="flex gap-2">
+                                        <div className="bg-orange-50 px-3 py-2.5 rounded-lg text-orange-400 text-sm font-bold border border-transparent">+91</div>
+                                        <input required type="tel" maxLength="10" placeholder="9876543210" className="flex-1 px-4 py-2.5 bg-orange-50 rounded-lg outline-none focus:ring-2 focus:ring-orange-200 text-sm font-medium border border-transparent" value={regData.phone} onChange={(e) => setRegData({...regData, phone: e.target.value.replace(/\D/g, '')})} />
+                                    </div>
+                                </div>
+                                <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-full font-black uppercase tracking-widest shadow-lg hover:bg-orange-700 transition-all text-[10px] mt-2">Get OTP Code</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'otp') {
+                return (
+                    <div className="min-h-screen bg-[#FFF9F2] flex items-center justify-center p-6 animate-fade-in">
+                        <div className="max-w-sm w-full bg-white rounded-3xl shadow-xl p-7 border border-orange-100">
+                            <button onClick={() => setView('auth')} className="mb-4 text-orange-400 text-[9px] font-black uppercase flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                                Back
+                            </button>
+                            <div className="text-center mb-6">
+                                <h2 className="text-xl font-serif font-black text-orange-950 uppercase tracking-tight">Verify Phone</h2>
+                                <p className="text-orange-500 text-[9px] font-medium mt-1.5">A 4-digit code was sent to +91 {regData.phone}</p>
+                            </div>
+                            <form onSubmit={(e) => { e.preventDefault(); setView('home'); }} className="space-y-6">
+                                <input required type="text" maxLength="4" placeholder="0 0 0 0" className="w-full text-center tracking-[1em] py-3 bg-orange-50 rounded-xl outline-none focus:ring-2 focus:ring-orange-200 text-xl font-black border border-transparent" value={otpInput} onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))} />
+                                <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-full font-black uppercase tracking-widest shadow-lg text-[10px]">Verify & Continue</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- Main App ---
+            return (
+                <div className="min-h-screen">
+                    <header className="bg-white/80 backdrop-blur-xl border-b border-orange-100 sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('home')}>
+                                <div className="bg-orange-600 p-1.5 rounded-lg text-white">
+                                    <RupeeIcon size={18} />
+                                </div>
+                                <h1 className="text-xl font-serif font-black tracking-widest text-orange-900 uppercase leading-none">KAAMSETU</h1>
+                            </div>
+                            <div className="flex items-center gap-3 pl-4 border-l border-orange-100">
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-[9px] font-black text-orange-500 uppercase leading-none mb-0.5">{regData.role}</p>
+                                    <p className="text-sm font-serif font-bold text-orange-950 leading-none">{regData.name || "Guest"}</p>
+                                </div>
+                                <div className="w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center text-orange-600 border border-orange-200">
+                                    <UserIcon size={16} />
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto px-4 py-6 pb-20 animate-fade-in">
+                        {view === 'home' && (
+                            <div className="space-y-10">
+                                <section className="relative rounded-3xl overflow-hidden shadow-xl bg-orange-600 text-white p-8 md:p-12 border border-orange-500">
+                                    <div className="relative z-10">
+                                        <h2 className="text-3xl md:text-4xl font-serif font-black mb-2 leading-tight">Namaste, {regData.name.split(' ')[0]}!</h2>
+                                        <p className="text-orange-50 text-sm md:text-base font-medium mb-6 opacity-90 leading-relaxed">Ab har kaam hoga aasaan. Find local professionals in minutes.</p>
+                                        <div className="flex flex-wrap gap-3">
+                                            <button onClick={() => setView('post-task')} className="bg-white text-orange-600 px-6 py-2 rounded-full font-black shadow-md text-xs uppercase tracking-tight">Post Request</button>
+                                            <button onClick={() => setView('workers')} className="bg-orange-700 text-white px-6 py-2 rounded-full font-black shadow-md text-xs uppercase tracking-tight">View Guild</button>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                                    {CATEGORIES.map(cat => (
+                                        <button key={cat.name} className="bg-white p-3 rounded-2xl border border-orange-100 shadow-sm hover:shadow-md transition-all flex flex-col items-center">
+                                            <div className="text-2xl mb-1">{cat.icon}</div>
+                                            <span className="font-bold text-[10px] text-orange-950">{cat.name}</span>
+                                        </button>
+                                    ))}
+                                </section>
+
+                                <section className="space-y-6">
+                                    <h3 className="text-lg font-serif font-black text-orange-950 flex items-center gap-2">
+                                        <MapPinIcon size={18} className="text-orange-600" /> Nearby Pros
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {sortedWorkers.slice(0, 4).map(worker => (
+                                            <div key={worker.id} onClick={() => { setSelectedWorker(worker); setView('worker-profile'); }} className="bg-white p-4 rounded-2xl border border-orange-50 shadow-sm hover:shadow-lg transition-all cursor-pointer flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-orange-600 rounded-xl flex-shrink-0 flex items-center justify-center text-white">
+                                                    <UserIcon size={20} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-serif font-black text-orange-950 text-sm truncate">{worker.name}</h4>
+                                                    <p className="text-orange-600 text-[9px] font-black uppercase tracking-widest mb-1">{worker.skill}</p>
+                                                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                                                        <span className="text-orange-600 font-black tracking-tight">₹{worker.rate}/hr</span>
+                                                        <span className="opacity-60">{worker.distance} KM</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            </div>
+                        )}
+
+                        {view === 'worker-profile' && selectedWorker && (
+                            <div className="max-w-4xl mx-auto">
+                                {renderBackButton('home')}
+                                <div className="bg-white rounded-3xl overflow-hidden border border-orange-100 shadow-xl">
+                                    <div className="bg-orange-600 p-8 text-white flex flex-col md:flex-row items-center gap-8">
+                                        <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center border-2 border-white/40 shadow-lg">
+                                            <UserIcon size={48} />
+                                        </div>
+                                        <div className="flex-1 text-center md:text-left">
+                                            <h2 className="text-2xl font-serif font-black mb-1">{selectedWorker.name}</h2>
+                                            <p className="text-orange-100 font-black uppercase text-[10px] mb-4">{selectedWorker.skill} Specialist</p>
+                                            <div className="flex justify-center md:justify-start gap-8">
+                                                <div>
+                                                    <p className="text-orange-100 text-[9px] font-black uppercase tracking-widest mb-0.5">Rate</p>
+                                                    <p className="text-lg font-serif font-bold tracking-wide leading-none">₹{selectedWorker.rate}/hr</p>
+                                                </div>
+                                                <div className="border-l border-white/20 pl-8">
+                                                    <p className="text-orange-100 text-[9px] font-black uppercase tracking-widest mb-0.5">Merit</p>
+                                                    <p className="text-lg font-serif font-bold text-white flex items-center gap-1.5 leading-none">⭐ {selectedWorker.rating}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-6 space-y-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-3">
+                                                <h3 className="font-serif font-black text-lg text-orange-950">Work Portfolio</h3>
+                                                {selectedWorker.pastWork.map((work, i) => (
+                                                    <div key={i} className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                                                        <p className="font-bold text-sm text-orange-950 mb-0.5">{work.title}</p>
+                                                        <p className="text-[10px] text-orange-600 font-medium">{work.desc}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="space-y-3">
+                                                <h3 className="font-serif font-black text-lg text-orange-950">Customer Reviews</h3>
+                                                {selectedWorker.reviews.map((rev, i) => (
+                                                    <div key={i} className="bg-white border border-orange-100 p-4 rounded-xl shadow-sm italic text-slate-500">
+                                                        <p className="font-bold text-[9px] text-orange-950 uppercase not-italic mb-1">{rev.user}</p>
+                                                        <p className="text-xs">"{rev.comment}"</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setView('booking')} className="w-full bg-orange-600 text-white py-4 rounded-full font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-orange-700 transition-all">Book Appointment</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'booking' && selectedWorker && (
+                            <div className="max-w-2xl mx-auto">
+                                {renderBackButton('worker-profile')}
+                                <div className="bg-white rounded-3xl p-8 shadow-xl border border-orange-100">
+                                    <div className="text-center mb-8">
+                                        <h2 className="text-xl font-serif font-black text-orange-950 uppercase tracking-tight">Select Time Slot</h2>
+                                        <p className="text-orange-500 text-[10px] font-black mt-1 uppercase">Booking with {selectedWorker.name}</p>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                            {getNextDays().map(day => (
+                                                <button key={day.id} onClick={() => setSelectedDate(day.id)} className={`flex-shrink-0 px-4 py-2 rounded-xl border transition-all text-center min-w-[80px] ${selectedDate === day.id ? 'bg-orange-600 border-orange-600 text-white' : 'bg-orange-50 border-orange-100 text-orange-900'}`}>
+                                                    <p className="text-[10px] font-bold uppercase leading-none mb-1">{day.display.split(',')[0]}</p>
+                                                    <p className="text-xs font-black">{day.display.split(',')[1]}</p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="space-y-2">
+                                            {TIME_SLOTS.map(slot => (
+                                                <button key={slot.id} onClick={() => setSelectedSlot(slot.id)} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${selectedSlot === slot.id ? 'bg-orange-600 border-orange-600 text-white shadow-md' : 'bg-white border-orange-100'}`}>
+                                                    <span className="text-xl">{slot.icon}</span>
+                                                    <div className="text-left">
+                                                        <p className="font-black text-sm leading-none mb-1">{slot.label}</p>
+                                                        <p className={`text-[10px] ${selectedSlot === slot.id ? 'text-white/80' : 'text-orange-400'}`}>{slot.range}</p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <button disabled={!selectedSlot} onClick={() => setView('success')} className={`w-full py-4 rounded-full font-black uppercase text-[10px] tracking-widest shadow-lg transition-all ${selectedSlot ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-300'}`}>Confirm Booking</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'success' && (
+                            <div className="max-w-md mx-auto text-center py-10 animate-fade-in">
+                                <div className="bg-white rounded-3xl p-10 shadow-2xl border border-orange-100">
+                                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mx-auto mb-6">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    </div>
+                                    <h2 className="text-2xl font-serif font-black text-orange-950 mb-2 uppercase">Request Sent!</h2>
+                                    <p className="text-slate-500 text-xs font-medium mb-8 leading-relaxed">
+                                        The specialist will call you shortly to confirm the details for your appointment.
+                                    </p>
+                                    <button onClick={() => setView('home')} className="w-full bg-orange-600 text-white py-3 rounded-full font-black uppercase text-[10px] tracking-widest shadow-lg">Back to Home</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'post-task' && (
+                            <div className="max-w-xl mx-auto animate-fade-in">
+                                {renderBackButton('home')}
+                                <div className="bg-white rounded-3xl p-8 shadow-xl border border-orange-100">
+                                    <div className="text-center mb-8">
+                                        <div className="bg-orange-50 p-2.5 rounded-xl inline-block text-orange-600 mb-3">
+                                            <RupeeIcon size={32} />
+                                        </div>
+                                        <h2 className="text-2xl font-serif font-black text-orange-950 uppercase tracking-tight leading-none">Post a Job</h2>
+                                        <p className="text-orange-500 text-[10px] font-black uppercase tracking-widest mt-2">Find trusted local help</p>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-black text-orange-400 uppercase tracking-widest block mb-1 ml-1">Job Title</label>
+                                            <input type="text" placeholder="e.g. Fixing bathroom tap" className="w-full px-5 py-3 bg-orange-50 rounded-xl outline-none focus:ring-2 focus:ring-orange-200 text-sm font-medium border border-transparent" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-black text-orange-400 uppercase tracking-widest block mb-1 ml-1">Service Type</label>
+                                            <select className="w-full px-5 py-3 bg-orange-50 rounded-xl outline-none focus:ring-2 focus:ring-orange-200 text-sm font-medium border border-transparent">
+                                                {CATEGORIES.map(c => <option key={c.name}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <button onClick={() => setView('home')} className="w-full bg-orange-600 text-white py-4 rounded-full font-black uppercase tracking-widest shadow-md text-[10px] mt-2">Publish Post Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'workers' && (
+                            <div className="space-y-6 animate-fade-in">
+                                {renderBackButton('home')}
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <h2 className="text-2xl font-serif font-black text-orange-950 uppercase tracking-widest">Directory</h2>
+                                    <div className="relative">
+                                        <input type="text" placeholder="Search Ramesh, Plumbing..." className="bg-white border border-orange-100 rounded-full px-5 py-2 text-xs outline-none focus:border-orange-400 w-full md:w-64 font-medium" onChange={(e) => setSearchQuery(e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {sortedWorkers.map(worker => (
+                                        <div key={worker.id} onClick={() => { setSelectedWorker(worker); setView('worker-profile'); }} className="bg-white p-4 rounded-2xl border border-orange-50 shadow-sm hover:shadow-md transition-all cursor-pointer">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-10 h-10 bg-orange-600 rounded-lg flex-shrink-0 flex items-center justify-center text-white">
+                                                    <UserIcon size={18} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h4 className="font-serif font-black text-orange-950 text-sm truncate">{worker.name}</h4>
+                                                    <p className="text-orange-600 text-[8px] font-black uppercase tracking-widest">{worker.skill}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-orange-50/50 p-2 rounded-lg">
+                                                <span className="text-sm font-black text-orange-900 leading-none tracking-tight">₹{worker.rate}/hr</span>
+                                                <span className="text-xs font-bold text-orange-600 leading-none">⭐ {worker.rating}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-orange-200">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">KaamSetu © 2024</p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
